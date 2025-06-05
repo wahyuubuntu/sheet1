@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+  <div id="quizForm" class="space-y-4"></div>
+  <div class="text-center my-4">
+    <button id="submitBtn" class="bg-blue-500 text-white py-2 px-6 rounded">Selesai</button>
+    <p class="text-red-600 mt-2">Waktu tersisa: <span id="timer">45:00</span></p>
+  </div>
+
+  <div id="hasilDiv" class="hidden mt-6 bg-white p-4 rounded shadow">
+    <h2 class="text-xl font-bold mb-2">Hasil Tes</h2>
+    <p><strong>NIK:</strong> <span id="hasil-nik"></span></p>
+    <p><strong>Nama:</strong> <span id="hasil-nama"></span></p>
+    <p>
+      <strong>Nilai:</strong> 
+      <span id="hasil-nilai" class="font-extrabold text-3xl"></span>
+    </p>
+    <p><strong>Waktu Tes:</strong> <span id="hasil-waktu"></span></p>
+    <p><strong>Jawaban:</strong> <span id="hasil-jawaban"></span></p>
+    <div class="mt-4 text-center">
+      <button id="btnKembali" class="bg-green-600 text-white py-2 px-6 rounded">Kembali ke Beranda</button>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const userNik = localStorage.getItem("user_nik");
+  const userNama = localStorage.getItem("user_nama");
+  const soalURL = "https://opensheet.elk.sh/1A9Kgl6qXSeDIQKw5-OtT_cKNEqN54MugDwvVcVh-WRg/sheet1";
+  const urlGAS = "https://script.google.com/macros/s/AKfycby0stKZ_RrpQkMDQn8rFKu1Q0NSVwHGrDhnQEY08aqP5U6oPjZ8qs9KWC-wzJbIAMzZ/exec";
+
+  const quizForm = document.getElementById("quizForm");
+  const submitBtn = document.getElementById("submitBtn");
+  const hasilDiv = document.getElementById("hasilDiv");
+  const btnKembali = document.getElementById("btnKembali");
+
+  let quizData = [];
+  let timerInterval;
+
+  async function loadSoal() {
+    try {
+      const res = await fetch(soalURL);
+      const data = await res.json();
+      quizData = data.map((item, i) => ({
+        nomor: i + 1,
+        soal: item.Soal,
+        opsi: {
+          A: item["Pilihan A"],
+          B: item["Pilihan B"],
+          C: item["Pilihan C"],
+          D: item["Pilihan D"],
+        },
+        Jawaban: item.Jawaban
+      }));
+      tampilkanSoal();
+      mulaiTimer();
+    } catch (e) {
+      alert("Gagal mengambil soal.");
+      console.error(e);
+    }
+  }
+
+  function tampilkanSoal() {
+    quizForm.innerHTML = "";
+    quizData.forEach((item, i) => {
+      const div = document.createElement("div");
+      div.className = "bg-white p-4 rounded shadow";
+      div.innerHTML = `
+        <p class="font-semibold mb-2">${item.nomor}. ${item.soal}</p>
+        ${["A","B","C","D"].map(opt => `
+          <label class="block">
+            <input type="radio" name="q${i}" value="${opt}" class="mr-2">
+            ${opt}. ${item.opsi[opt]}
+          </label>`).join("")}
+      `;
+      quizForm.appendChild(div);
+    });
+  }
+
+  function mulaiTimer() {
+    let sisa = 45 * 60;
+    timerInterval = setInterval(() => {
+      const menit = String(Math.floor(sisa / 60)).padStart(2, '0');
+      const detik = String(sisa % 60).padStart(2, '0');
+      document.getElementById("timer").textContent = `${menit}:${detik}`;
+      if (--sisa < 0) {
+        clearInterval(timerInterval);
+        submitQuiz();
+      }
+    }, 1000);
+  }
+
+  submitBtn.addEventListener('click', submitQuiz);
+
+  async function submitQuiz() {
+    clearInterval(timerInterval);
+    // tombol selesai tetap aktif
+
+    let benar = 0;
+    let jawabanUser = [];
+
+    for (let i = 0; i < quizData.length; i++) {
+      const selected = document.querySelector(`input[name=q${i}]:checked`);
+      const jawab = selected ? selected.value : '-';
+      jawabanUser.push(jawab);
+      if (jawab === quizData[i].Jawaban) benar++;
+    }
+
+    const score = Math.round((benar / quizData.length) * 100);
+
+    const waktuTes = new Date().toLocaleString();
+    const payload = {
+      nik: userNik,
+      nama: userNama,
+      nilai: score,
+      waktuTes,
+      jawaban: jawabanUser.join(', ')
+    };
+
+    try {
+      const res = await fetch(urlGAS, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const json = await res.json();
+      if (json.result !== "success") {
+        alert("Gagal menyimpan hasil");
+        return;
+      }
+    } catch (err) {
+      console.error("Error kirim hasil:", err);
+      return;
+    }
+
+    // Tampilkan hasil
+    const hasilNilaiEl = document.getElementById("hasil-nilai");
+    hasilNilaiEl.textContent = `${score} / 100`;
+    hasilNilaiEl.style.color = score >= 75 ? "green" : "red";
+    hasilNilaiEl.style.fontWeight = "800";
+    hasilNilaiEl.style.fontSize = "2.5rem";
+    hasilNilaiEl.style.textTransform = "uppercase";
+
+    document.getElementById("hasil-nik").textContent = userNik;
+    document.getElementById("hasil-nama").textContent = userNama;
+    document.getElementById("hasil-waktu").textContent = waktuTes;
+    document.getElementById("hasil-jawaban").textContent = payload.jawaban;
+
+    hasilDiv.classList.remove("hidden");
+    quizForm.style.display = "none";
+
+    disableBackButton();
+  }
+
+  btnKembali.addEventListener('click', () => {
+    window.location.href = "index.html";
+  });
+
+  function disableBackButton() {
+    history.pushState(null, null, location.href);
+    window.onpopstate = function () {
+      history.go(1);
+    };
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
+  loadSoal();
+});
+</script>
+</body>
+</html>
