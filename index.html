@@ -2,60 +2,62 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login NIK</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login dengan Apps Script</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="flex items-center justify-center min-h-screen bg-gray-100">
   <div class="bg-white p-6 rounded shadow-md w-full max-w-sm">
-    <h2 class="text-xl font-semibold text-center mb-4">Login NIK</h2>
+    <h2 class="text-xl font-semibold text-center mb-4">Login</h2>
     <form id="loginForm" class="space-y-4">
       <div>
-        <label class="block text-sm">NIK</label>
+        <label class="block text-sm font-medium mb-1">NIK</label>
         <input type="text" id="nik" required class="w-full border p-2 rounded" />
       </div>
       <div>
-        <label class="block text-sm">Password</label>
+        <label class="block text-sm font-medium mb-1">Password</label>
         <input type="password" id="password" required class="w-full border p-2 rounded" />
       </div>
       <button type="submit" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
         Login
       </button>
-      <p id="message" class="text-center text-red-500"></p>
+      <p id="message" class="text-center mt-2 text-red-500"></p>
     </form>
   </div>
 
   <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbyZdUWaiDpu44vZFCogiLaLEBrg2OvdnwEuCv3avOSttwZmk0qBDNeQCw4hVQFv4zn5jQ/exec"; // Ganti dengan URL Web App kamu
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVC3H4kzghe6maOduVQlZ_BtJW6C66PbqA9U39RjaHTn_2Fvr53jzSybi3l5awmQImqg/exec"; // Ganti dengan URL Apps Script web app kamu
 
-    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const nik = document.getElementById("nik").value;
-      const password = document.getElementById("password").value;
+      const nik = document.getElementById("nik").value.trim();
+      const password = document.getElementById("password").value.trim();
       const message = document.getElementById("message");
 
       try {
-        const response = await fetch(scriptURL, {
+        const response = await fetch(SCRIPT_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nik, password })
+          body: JSON.stringify({ nik, password }),
         });
 
         const result = await response.json();
-        message.textContent = result.message;
 
         if (result.success) {
+          message.textContent = result.message;
           message.classList.remove("text-red-500");
           message.classList.add("text-green-600");
-          // window.location.href = "dashboard.html"; // redirect kalau login berhasil
+          // Redirect atau aksi lain setelah login sukses
         } else {
+          message.textContent = result.message;
           message.classList.remove("text-green-600");
           message.classList.add("text-red-500");
         }
       } catch (error) {
-        message.textContent = "Gagal terhubung ke server";
+        message.textContent = "Terjadi kesalahan, coba lagi.";
+        message.classList.remove("text-green-600");
         message.classList.add("text-red-500");
-        console.error("Login error:", error);
+        console.error(error);
       }
     });
   </script>
