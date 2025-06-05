@@ -1,66 +1,35 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login NIK</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="flex items-center justify-center min-h-screen bg-gray-100">
-  <div class="bg-white shadow-md p-8 rounded w-full max-w-md">
-    <h2 class="text-2xl font-bold text-center mb-6">Login NIK</h2>
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label class="block text-gray-700">NIK</label>
-        <input type="text" id="nik" required class="w-full px-3 py-2 border rounded"/>
-      </div>
-      <div>
-        <label class="block text-gray-700">Password</label>
-        <input type="password" id="password" required class="w-full px-3 py-2 border rounded"/>
-      </div>
-      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-        Login
-      </button>
-      <p id="message" class="text-center text-red-500 mt-2"></p>
-    </form>
-  </div>
+function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Users");
+  const data = sheet.getDataRange().getValues();
 
-  <script>
-    const scriptURL = "https://script.google.com/macros/s/AKfycbwxsN1Uog03Im6EZKWzuKlM25ei7vi8bhpVUQOfiXUVttVR_8dctT5TgZQuu9jjxp1niQ/exec"; // ← Ganti di sini!
+  const input = JSON.parse(e.postData.contents);
+  const nik = input.nik;
+  const password = input.password;
 
-    document.getElementById("loginForm").addEventListener("submit", async function (e) {
-      e.preventDefault();
+  let success = false;
+  let message = "NIK atau Password salah";
 
-      const nik = document.getElementById("nik").value;
-      const password = document.getElementById("password").value;
-      const message = document.getElementById("message");
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] == nik && data[i][1] == password) {
+      success = true;
+      message = "Login berhasil";
+      break;
+    }
+  }
 
-      try {
-        const response = await fetch(scriptURL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nik, password })
-        });
+  const result = JSON.stringify({ success, message });
 
-        const result = await response.json();
-        message.textContent = result.message;
+  return ContentService.createTextOutput(result)
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
 
-        if (result.success) {
-          message.classList.remove("text-red-500");
-          message.classList.add("text-green-600");
-          alert("Login berhasil!");
-          // location.href = "home.html"; // Redirect kalau perlu
-        } else {
-          message.classList.remove("text-green-600");
-          message.classList.add("text-red-500");
-        }
-      } catch (error) {
-        console.error("Fetch error:", error);
-        message.textContent = "Gagal menghubungi server.";
-        message.classList.remove("text-green-600");
-        message.classList.add("text-red-500");
-      }
-    });
-  </script>
-</body>
-</html>
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
